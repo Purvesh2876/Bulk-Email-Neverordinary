@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bulk Email</title>
+<style>
+  :root {
+    --bg: #000; --card: #0d0d0d; --card2: #141414; --line: #262626;
+    --text: #ededed; --muted: #8f8f8f; --accent: #0070f3;
+    --ok: #3ecf8e; --bad: #ff5c5c; --amber: #ff990066;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; color: var(--text); background: var(--bg);
+    font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 36px 18px 60px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .logo { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 18px;
+    background: #ededed; color: #000; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -.02em; }
+  header p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  .grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; }
+  @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+  .card { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; padding: 22px;
+    background: linear-gradient(180deg, #2a1800 0%, var(--card) 140px), var(--card); }
+  .card h2 { margin: 0 0 14px; font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+  label { display: flex; justify-content: space-between; margin: 14px 0 6px; font-size: 13px; font-weight: 600; }
+  label span { color: var(--muted); font-weight: 400; }
+  input, textarea { width: 100%; padding: 11px 12px; font: inherit; color: var(--text);
+    background: var(--card2); border: 1px solid var(--line); border-radius: 8px; outline: none; }
+  input::placeholder, textarea::placeholder { color: #5c5c5c; }
+  input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #0070f333; }
+  textarea { resize: vertical; min-height: 200px; line-height: 1.5; }
+  #emails { min-height: 260px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--card2); border: 1px solid var(--line); color: var(--muted); }
+  .chip.good { color: var(--ok); } .chip.warn { color: var(--bad); }
+  .upload { display: inline-block; margin-top: 10px; font-size: 13px; color: var(--accent); cursor: pointer; }
+  .upload input { display: none; }
+  .actions { display: flex; gap: 10px; margin-top: 18px; }
+  button { flex: 1; padding: 11px 16px; font: inherit; font-weight: 600; border: 1px solid #ededed; border-radius: 8px;
+    cursor: pointer; color: #000; background: #ededed; transition: opacity .2s, background .2s; }
+  button:hover { background: #fff; }
+  button.ghost { background: #000; color: var(--text); border-color: var(--line); flex: .7; }
+  button.ghost:hover { background: #141414; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+  .stat { background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; text-align: center; }
+  .stat b { display: block; font-size: 24px; } .stat small { color: var(--muted); font-size: 12px; }
+  .stat.s b { color: var(--ok); } .stat.f b { color: var(--bad); }
+  .bar { height: 6px; background: var(--card2); border-radius: 99px; overflow: hidden; margin-top: 14px; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  #status { margin-top: 10px; font-size: 13px; color: var(--muted); min-height: 18px; }
+  #failed { margin-top: 12px; max-height: 160px; overflow: auto; font-size: 12px; color: var(--bad); white-space: pre-wrap; }
+  #retry { margin-top: 10px; display: none; width: 100%; }
+  #report { margin-top: 10px; display: none; width: 100%; }
+  #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(80px); background: #111;
+    border: 1px solid var(--line); padding: 11px 18px; border-radius: 8px; font-size: 14px; transition: transform .25s; }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">✉️</div>
+    <div><h1>Bulk Email</h1><p>One message, sent individually to every recipient.</p></div>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Compose</h2>
+      <label for="key">Access key</label>
+      <input id="key" type="password" autocomplete="off" placeholder="Your access key">
+
+      <label for="subject">Subject</label>
+      <input id="subject" placeholder="Subject line">
+
+      <label for="message">Message <span id="chars">0 characters</span></label>
+      <textarea id="message" placeholder="Write your plain text message…"></textarea>
+    </section>
+
+    <section class="card">
+      <h2>Recipients</h2>
+      <textarea id="emails" placeholder="Paste emails — one per line, or separated by commas / spaces"></textarea>
+      <label class="upload">＋ Upload CSV / TXT<input type="file" id="file" accept=".csv,.txt"></label>
+      <div class="chips">
+        <span class="chip good" id="cValid">0 valid</span>
+        <span class="chip" id="cDup">0 duplicates removed</span>
+        <span class="chip warn" id="cBad">0 invalid</span>
+      </div>
+
+      <div class="actions">
+        <button class="ghost" id="test">Send test</button>
+        <button id="send">Send to all</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat s"><b id="nSent">0</b><small>Sent</small></div>
+        <div class="stat f"><b id="nFail">0</b><small>Failed</small></div>
+        <div class="stat"><b id="nLeft">0</b><small>Remaining</small></div>
+      </div>
+      <div class="bar"><i id="bar"></i></div>
+      <div id="status"></div>
+      <div id="failed"></div>
+      <button class="ghost" id="retry">Retry failed</button>
+      <button class="ghost" id="report">⬇ Download report (Excel / CSV)</button>
+    </section>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const BATCH = 10;
+let lastFailed = [];
+
+$("key").value = sessionStorage.getItem("key") || "";
+$("key").addEventListener("input", () => sessionStorage.setItem("key", $("key").value));
+
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 3000);
+}
+
+function parseEmails(text) {
+  const all = text.split(/[\s,;]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+  const good = all.filter(e => EMAIL_RE.test(e));
+  const valid = [...new Set(good)];
+  return { valid, dups: good.length - valid.length, invalid: all.length - good.length };
+}
+
+function refresh() {
+  const p = parseEmails($("emails").value);
+  $("cValid").textContent = `${p.valid.length} valid`;
+  $("cDup").textContent = `${p.dups} duplicates removed`;
+  $("cBad").textContent = `${p.invalid} invalid`;
+  $("chars").textContent = `${$("message").value.length} characters`;
+  return p;
+}
+["emails", "message"].forEach(id => $(id).addEventListener("input", refresh));
+$("file").addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  if (f) { $("emails").value += "\n" + await f.text(); refresh(); toast("File added"); }
+  e.target.value = "";
+});
+
+async function sendBatch(recipients) {
+  const res = await fetch("/api/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-access-key": $("key").value },
+    body: JSON.stringify({ subject: $("subject").value, message: $("message").value, recipients }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data.results;
+}
+
+function setBusy(b) { ["send", "test", "retry"].forEach(id => $(id).disabled = b); }
+
+// email -> { status, error, time }  (kept across retries; reset on each "Send to all")
+const reportMap = new Map();
+
+function downloadReport() {
+  const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const order = { Failed: 0, "Not sent": 1, Sent: 2 };
+  const data = [...reportMap].map(([email, r]) => [email, r.status, r.error, r.time])
+    .sort((a, b) => order[a[1]] - order[b[1]]);
+  const rows = [["Email", "Status", "Error", "Time"], ...data];
+  const csv = "﻿" + rows.map(r => r.map(q).join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = `email-report-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function run(recipients, mode = "all") {
+  if (!$("key").value) return toast("Enter the access key");
+  if (!$("subject").value.trim() || !$("message").value.trim()) return toast("Subject and message are required");
+  if (!recipients.length) return toast("No valid recipients");
+
+  if (mode === "all") {
+    reportMap.clear();
+    recipients.forEach(e => reportMap.set(e, { status: "Not sent", error: "", time: "" }));
+  }
+  const track = mode !== "test";
+  setBusy(true);
+  $("retry").style.display = "none";
+  $("failed").textContent = "";
+  let ok = 0; const failed = [];
+  const total = recipients.length;
+  const paint = () => {
+    $("nSent").textContent = ok; $("nFail").textContent = failed.length;
+    $("nLeft").textContent = total - ok - failed.length;
+    $("bar").style.width = ((ok + failed.length) / total * 100) + "%";
+  };
+  paint(); $("status").textContent = "Sending… keep this tab open";
+
+  try {
+    for (let i = 0; i < total; i += BATCH) {
+      const results = await sendBatch(recipients.slice(i, i + BATCH));
+      for (const r of results) {
+        r.ok ? ok++ : failed.push(r);
+        if (track) reportMap.set(r.to, { status: r.ok ? "Sent" : "Failed", error: r.error || "", time: new Date().toLocaleString() });
+      }
+      paint();
+    }
+    $("status").textContent = `Finished: ${ok} sent, ${failed.length} failed`;
+    toast(failed.length ? "Done with some failures" : "All emails sent ✓");
+  } catch (err) {
+    $("status").textContent = `Stopped: ${err.message}`;
+    toast(err.message);
+  }
+  lastFailed = failed.map(f => f.to);
+  if (failed.length) {
+    $("failed").textContent = failed.map(f => `${f.to} — ${f.error}`).join("\n");
+    $("retry").style.display = "block";
+  }
+  if (reportMap.size) $("report").style.display = "block";
+  setBusy(false);
+}
+
+$("report").onclick = downloadReport;
+$("send").onclick = () => {
+  const { valid } = refresh();
+  if (!valid.length) return toast("No valid recipients");
+  if (confirm(`Send this email to ${valid.length} people?`)) run(valid);
+};
+$("test").onclick = () => {
+  const to = (prompt("Send test to which email?") || "").trim();
+  if (!to) return;
+  EMAIL_RE.test(to) ? run([to], "test") : toast("Invalid email");
+};
+$("retry").onclick = () => run(lastFailed, "retry");
+refresh();
+</script>
+</body>
+</html>
