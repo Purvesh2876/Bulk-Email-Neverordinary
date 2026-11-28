@@ -6,6 +6,16 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// **words** in the message become bold. One line at a time, no other formatting.
+const BOLD_RE = /\*\*(?=\S)(.*?\S)\*\*/g;
+const ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
+const toHtml = (msg) =>
+  msg
+    .replace(/[&<>]/g, (c) => ESCAPES[c]) // typed text must never act as HTML
+    .replace(BOLD_RE, "<strong>$1</strong>")
+    .replace(/\r?\n/g, "<br>\n");
+const toText = (msg) => msg.replace(BOLD_RE, "$1");
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
@@ -41,7 +51,8 @@ module.exports = async function handler(req, res) {
         from: `"${FROM_NAME || "Sender"}" <${GMAIL_USER}>`,
         to, // one recipient per email
         subject,
-        text: message,
+        text: toText(message),
+        html: toHtml(message),
       });
       results.push({ to, ok: true });
     } catch (err) {

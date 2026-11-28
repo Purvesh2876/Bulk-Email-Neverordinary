@@ -1,6 +1,6 @@
 # Bulk Email (NeverOrdinary)
 
-Small internal tool: send the **same subject and plain-text message** to up to ~200 recipients, each as a **separate email** (never CC/BCC). Hosted on **Vercel**. Sends through **Gmail SMTP** with an App Password. Minimal UI by design: it must work, not be fancy.
+Small internal tool: send the **same subject and message** to up to ~200 recipients, each as a **separate email** (never CC/BCC). Hosted on **Vercel**. Sends through **Gmail SMTP** with an App Password. Minimal UI by design: it must work, not be fancy.
 
 ## Stack
 - Node.js, `nodemailer` (Gmail SMTP). `express` is used only for local dev.
@@ -21,7 +21,7 @@ Small internal tool: send the **same subject and plain-text message** to up to ~
 - **Individual sends.** One `sendMail` per recipient. No CC/BCC.
 - **Access key.** `x-access-key` must equal `ACCESS_KEY`, otherwise 401. Without it anyone with the URL could send mail from the Gmail account.
 - **CSV report built client-side.** There is no database. Each recipient is tracked as Sent, Failed or Not sent. Failed ones come first in the CSV, which is UTF-8 with a BOM so Excel opens it. Test sends are excluded from the report. "Retry failed" updates the same report. The report is lost on refresh, so download it when the send finishes.
-- **Plain text only** for now (`text:` in `sendMail`). HTML would need a `html:` field and an editor.
+- **Bold is the only formatting.** The user types `**words**`. `api/send.js` escapes the message, then sends it as `html:` with a `text:` copy that has the stars removed. There is no editor.
 
 ## Limits and gotchas
 - A free Gmail account allows about 500 sends a day (Workspace about 2,000). 200 recipients is fine.
